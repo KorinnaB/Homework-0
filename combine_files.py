@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
+CSCI4406 - Fall 25
+Korinna B., Charisma R., Allison H., Emma W.
 - Reads file1 and file2 once, storing their integers in memory
 - Computes the sum of integers in each file
 - If sums are equal, file2 comes first by this implementation
 - Make it work with integer values (zero, positive, negative)
 - Make it so input files must cotain one integer per line
-- double check it works on linux
 """
 
 import sys
