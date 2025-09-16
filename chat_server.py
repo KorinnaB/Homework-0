@@ -2,59 +2,60 @@ import socket
 import threading
 import sys
 import os
+import shutil
 
 # Cross-platform single-character input
 if os.name == "nt":
     import msvcrt
+
     def get_char():
         return msvcrt.getwch()
 else:
     import termios
     import tty
+
     def get_char():
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
         try:
             tty.setraw(fd)
-            return sys.stdin.read(1)
+            char = sys.stdin.read(1)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return char
 
-LOCAL_PREFIX = "[SERVER] "
-REMOTE_PREFIX = "[CLIENT] "
+def display_line(prefix, buffer):
+   
+    width = shutil.get_terminal_size().columns
 
-local_buffer = ""  # global buffer for the typing line
-
-def print_buffer():
-    """Print local buffer after remote message arrives."""
-    global local_buffer
-    print(f"\r{LOCAL_PREFIX}{local_buffer}", end="", flush=True)
+    if len(buffer) > width - len(prefix) - 1:
+        buffer = buffer[-(width - len(prefix) - 1):]
+    print(f"\r{prefix}{buffer}{' ' * 5}", end="", flush=True)
 
 def receive_messages(conn):
-    """Receive messages from client and print them above local buffer."""
     buffer = ""
-    global local_buffer
-    while True:
-        try:
+    prefix = "[CLIENT] "
+    try:
+        while True:
             data = conn.recv(1024)
             if not data:
-                print(f"\n{LOCAL_PREFIX} Client disconnected")
+                print("\n[SERVER] Client disconnected")
                 break
             for c in data.decode():
                 if c in ("\r", "\n"):
-                    if buffer:
-                        print(f"\n{REMOTE_PREFIX}{buffer}")
-                        buffer = ""
-                        print_buffer()
-                elif c == "\x08":
+                    print(f"\n{prefix}{buffer}")
+                    buffer = ""
+                elif c == "\x08":  # Backspace
                     buffer = buffer[:-1]
                 else:
                     buffer += c
-        except:
-            break
+                display_line(prefix, buffer)
+    except Exception as e:
+        print(f"\n[SERVER ERROR] {e}")
+    finally:
+        conn.close()
 
 def main():
-    global local_buffer
     if len(sys.argv) != 2:
         print(f"Usage: python {sys.argv[0]} listen_port")
         sys.exit(1)
@@ -63,29 +64,33 @@ def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(("0.0.0.0", PORT))
     server_socket.listen(1)
-    print(f"{LOCAL_PREFIX} Listening on port {PORT}...")
+    print(f"[SERVER] Listening on port {PORT}...")
 
     conn, addr = server_socket.accept()
-    print(f"{LOCAL_PREFIX} Connection established with {addr}")
+    print(f"[SERVER] Connection established with {addr}")
 
     threading.Thread(target=receive_messages, args=(conn,), daemon=True).start()
 
-    print(f"{LOCAL_PREFIX} Type your messages below:")
+    print("[SERVER] Type your messages below:")
+    buffer = ""
+    prefix = "[SERVER] "
     try:
         while True:
             char = get_char()
             if char in ("\r", "\n"):
-                print(f"\n{LOCAL_PREFIX}{local_buffer}")
-                local_buffer = ""
+                # Print the line locally and send only newline
+                print(f"\n{prefix}{buffer}")
+                conn.sendall(b"\n")
+                buffer = ""
             elif char == "\x08":
-                local_buffer = local_buffer[:-1]
+                buffer = buffer[:-1]
                 conn.sendall(char.encode())
             else:
-                local_buffer += char
+                buffer += char
                 conn.sendall(char.encode())
-            print_buffer()
+            display_line(prefix, buffer)
     except KeyboardInterrupt:
-        print(f"\n{LOCAL_PREFIX} Shutting down...")
+        print("\n[SERVER] Shutting down...")
     finally:
         conn.close()
         server_socket.close()
