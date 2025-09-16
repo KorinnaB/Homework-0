@@ -5,3 +5,5 @@ To run client :
 Ex:
         python chat_server.py 5000
         python chat_client.py 127.0.0.1 5000
+EX: (linux)
+        python3 chat_server.py 5000
