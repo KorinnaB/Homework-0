@@ -20,8 +20,8 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-LOCAL_PREFIX = "[SERVER] "
-REMOTE_PREFIX = "[CLIENT] "
+LOCAL_PREFIX = "[CLIENT] "
+REMOTE_PREFIX = "[SERVER] "
 
 local_buffer = ""  # global buffer for the typing line
 
@@ -30,15 +30,15 @@ def print_buffer():
     global local_buffer
     print(f"\r{LOCAL_PREFIX}{local_buffer}", end="", flush=True)
 
-def receive_messages(conn):
-    """Receive messages from client and print them above local buffer."""
+def receive_messages(sock):
+    """Receive messages from server and print them above local buffer."""
     buffer = ""
     global local_buffer
     while True:
         try:
-            data = conn.recv(1024)
+            data = sock.recv(1024)
             if not data:
-                print(f"\n{LOCAL_PREFIX} Client disconnected")
+                print(f"\n{LOCAL_PREFIX} Server disconnected")
                 break
             for c in data.decode():
                 if c in ("\r", "\n"):
@@ -55,22 +55,20 @@ def receive_messages(conn):
 
 def main():
     global local_buffer
-    if len(sys.argv) != 2:
-        print(f"Usage: python {sys.argv[0]} listen_port")
+    if len(sys.argv) != 3:
+        print(f"Usage: python {sys.argv[0]} server_ip server_port")
         sys.exit(1)
 
-    PORT = int(sys.argv[1])
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(("0.0.0.0", PORT))
-    server_socket.listen(1)
-    print(f"{LOCAL_PREFIX} Listening on port {PORT}...")
+    SERVER_IP = sys.argv[1]
+    SERVER_PORT = int(sys.argv[2])
 
-    conn, addr = server_socket.accept()
-    print(f"{LOCAL_PREFIX} Connection established with {addr}")
-
-    threading.Thread(target=receive_messages, args=(conn,), daemon=True).start()
-
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((SERVER_IP, SERVER_PORT))
+    print(f"{LOCAL_PREFIX} Connected to {SERVER_IP}:{SERVER_PORT}")
     print(f"{LOCAL_PREFIX} Type your messages below:")
+
+    threading.Thread(target=receive_messages, args=(sock,), daemon=True).start()
+
     try:
         while True:
             char = get_char()
@@ -79,16 +77,15 @@ def main():
                 local_buffer = ""
             elif char == "\x08":
                 local_buffer = local_buffer[:-1]
-                conn.sendall(char.encode())
+                sock.sendall(char.encode())
             else:
                 local_buffer += char
-                conn.sendall(char.encode())
+                sock.sendall(char.encode())
             print_buffer()
     except KeyboardInterrupt:
         print(f"\n{LOCAL_PREFIX} Shutting down...")
     finally:
-        conn.close()
-        server_socket.close()
+        sock.close()
 
 if __name__ == "__main__":
     main()
