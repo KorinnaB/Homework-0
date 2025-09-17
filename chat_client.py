@@ -1,3 +1,8 @@
+"""
+CSCI 4406 - Fall 2025
+Team members: Korinna B., Charisma R., Allison H., Emma W.
+
+"""
 import socket
 import threading
 import sys
