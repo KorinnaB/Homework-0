@@ -42,6 +42,7 @@ def receive_messages(sock):
                 break
             for c in data.decode():
                 if c in ("\r", "\n"):
+                    print(f"\r{' ' * 50}") # clears line
                     print(f"\n{prefix}{buffer}")
                     buffer = ""
                 elif c == "\x08":
@@ -71,14 +72,14 @@ def main():
 
     buffer = ""
     prefix = "[CLIENT] "
+
     try:
         while True:
             char = get_char()
             if char in ("\r", "\n"):
-               
-                print(f"\n{prefix}{buffer}")
                 sock.sendall(b"\n")
-                buffer = ""
+                buffer = "" 
+                print() # new line for spacing
             elif char == "\x08":
                 buffer = buffer[:-1]
                 sock.sendall(char.encode())

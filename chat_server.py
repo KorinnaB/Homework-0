@@ -43,6 +43,7 @@ def receive_messages(conn):
                 break
             for c in data.decode():
                 if c in ("\r", "\n"):
+                    print(f"\r{' ' * 50}") # clears line
                     print(f"\n{prefix}{buffer}")
                     buffer = ""
                 elif c == "\x08":  # Backspace
@@ -61,6 +62,8 @@ def main():
         sys.exit(1)
 
     PORT = int(sys.argv[1])
+
+
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(("0.0.0.0", PORT))
     server_socket.listen(1)
@@ -78,10 +81,9 @@ def main():
         while True:
             char = get_char()
             if char in ("\r", "\n"):
-                # Print the line locally and send only newline
-                print(f"\n{prefix}{buffer}")
                 conn.sendall(b"\n")
                 buffer = ""
+                print() # new line for spacing
             elif char == "\x08":
                 buffer = buffer[:-1]
                 conn.sendall(char.encode())
